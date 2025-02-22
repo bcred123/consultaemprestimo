@@ -6,9 +6,32 @@
     <title>Painel de Status - Bcred Consultoria</title>
     
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyATpi0m0pN-aA1dxDqNX2vJLqQgV_ypvrA",
+            authDomain: "bcredconsultoria-641d5.firebaseapp.com",
+            projectId: "bcredconsultoria-641d5",
+            storageBucket: "bcredconsultoria-641d5.appspot.com",
+            messagingSenderId: "182320069073",
+            appId: "1:182320069073:web:635bbbbc0f55b3348888f0"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Make db and auth globally available
+        window.db = db;
+        window.auth = auth;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    </script>
 
     <style>
         /* CSS ORIGINAL PRESERVADO */
@@ -141,23 +164,6 @@
             margin-top: 40px;
         }
     </style>
-
-    <script>
-        // Configuração Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBWsBweDTx69iqSxMPlwpuQe_LsCv3uQHw",
-            authDomain: "banco-de-dados-71102.firebaseapp.com",
-            projectId: "banco-de-dados-71102",
-            storageBucket: "banco-de-dados-71102.appspot.com",
-            messagingSenderId: "255307382507",
-            appId: "1:255307382507:web:0be9917f3791ccce0b08ae",
-            measurementId: "G-5HNHZ84FSC"
-        };
-
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-    </script>
 </head>
 <body>
     <header>
@@ -286,7 +292,7 @@
             const senha = document.getElementById('adminPassword').value;
 
             try {
-                await auth.signInWithEmailAndPassword(email, senha);
+                await signInWithEmailAndPassword(auth, email, senha);
                 document.getElementById('adminLoginSection').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
                 carregarClientes();
