@@ -7,12 +7,12 @@
     
     <!-- Firebase SDK -->
     <script type="module">
-        // Import the functions you need from the SDKs you need
+        // Importações do Firebase (versão modular)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // Your web app's Firebase configuration
+        // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyATpi0m0pN-aA1dxDqNX2vJLqQgV_ypvrA",
             authDomain: "bcredconsultoria-641d5.firebaseapp.com",
@@ -22,19 +22,20 @@
             appId: "1:182320069073:web:635bbbbc0f55b3348888f0"
         };
 
-        // Initialize Firebase
+        // Inicializa o Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Make db and auth globally available
+        // Torna as variáveis globais para uso no código
         window.db = db;
         window.auth = auth;
         window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
     </script>
 
     <style>
-        /* CSS ORIGINAL PRESERVADO */
+        /* Estilos CSS (preservados) */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -252,7 +253,7 @@
             }).format(valor);
         }
 
-        // Controle de Login
+        // Controle de Login do Cliente
         async function loginCliente() {
             const cpf = document.getElementById('username').value.replace(/\D/g, '');
             const senha = document.getElementById('password').value;
@@ -286,15 +287,20 @@
             document.getElementById('loanStatus').textContent = cliente.status;
         }
 
-        // Administração
+        // Controle de Login do Administrador
         async function loginAdmin() {
             const email = document.getElementById('adminEmail').value;
             const senha = document.getElementById('adminPassword').value;
 
             try {
+                // Autentica o administrador
                 await signInWithEmailAndPassword(auth, email, senha);
+                
+                // Oculta o formulário de login e exibe o painel administrativo
                 document.getElementById('adminLoginSection').style.display = 'none';
                 document.getElementById('adminDashboard').style.display = 'block';
+                
+                // Carrega a lista de clientes
                 carregarClientes();
             } catch (error) {
                 alert('Credenciais administrativas inválidas');
@@ -302,6 +308,7 @@
             }
         }
 
+        // Função para carregar clientes no painel administrativo
         async function carregarClientes() {
             const tbody = document.getElementById('clientList');
             tbody.innerHTML = '';
@@ -330,6 +337,7 @@
             });
         }
 
+        // Função para atualizar o status do cliente
         async function atualizarStatus(id, novoStatus) {
             try {
                 await db.collection('clientes').doc(id).update({ status: novoStatus });
@@ -339,6 +347,7 @@
             }
         }
 
+        // Função para excluir um cliente
         async function excluirCliente(id) {
             if (confirm('Confirmar exclusão?')) {
                 await db.collection('clientes').doc(id).delete();
@@ -346,6 +355,7 @@
             }
         }
 
+        // Função para adicionar um novo cliente
         async function addCliente() {
             const novoCliente = {
                 cpf: document.getElementById('newCpf').value.replace(/\D/g, ''),
@@ -371,9 +381,14 @@
         // Controle de Sessão
         auth.onAuthStateChanged(usuario => {
             if (usuario) {
+                // Se o administrador estiver logado, exibe o painel administrativo
                 document.getElementById('adminDashboard').style.display = 'block';
                 document.getElementById('loginSection').style.display = 'none';
                 carregarClientes();
+            } else {
+                // Se não estiver logado, exibe o formulário de login
+                document.getElementById('adminDashboard').style.display = 'none';
+                document.getElementById('loginSection').style.display = 'block';
             }
         });
 
@@ -394,7 +409,7 @@
         }
 
         function logoutAdmin() {
-            auth.signOut();
+            signOut(auth); // Desconecta o administrador
             document.getElementById('adminDashboard').style.display = 'none';
             document.getElementById('loginSection').style.display = 'block';
         }
