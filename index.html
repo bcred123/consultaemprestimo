@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Status - Bcred Consultoria</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
+    <style>
+        /* CSS ORIGINAL PRESERVADO */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        header {
+            background: #0073e6;
+            color: white;
+            text-align: center;
+            padding: 50px 20px;
+        }
+        header h1 {
+            font-size: 36px;
+            margin: 0;
+        }
+        header p {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        .login-section, .admin-login-section {
+            background: #ffffff;
+            padding: 40px 20px;
+            max-width: 400px;
+            margin: -50px auto 0;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .login-section input, .admin-login-section input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .login-section button, .admin-login-section button {
+            width: 100%;
+            padding: 12px;
+            background-color: #0073e6;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .login-section button:hover, .admin-login-section button:hover {
+            background-color: #005bb5;
+        }
+        .dashboard {
+            display: none;
+            background: #ffffff;
+            padding: 40px 20px;
+            max-width: 600px;
+            margin: 40px auto 0;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+        .dashboard h2 {
+            font-size: 28px;
+            color: #0073e6;
+            margin-bottom: 20px;
+        }
+        .dashboard p {
+            font-size: 16px;
+            margin: 8px 0;
+        }
+        .status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        .logout-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .logout-button:hover {
+            background-color: #e64a19;
+        }
+        .admin-dashboard {
+            display: none;
+            background: #ffffff;
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: 40px auto 0;
+            border-radius: 10px;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .add-client-form {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+        footer {
+            background: #0073e6;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+    </style>
+
+    <script>
+        // Configuração Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWsBweDTx69iqSxMPlwpuQe_LsCv3uQHw",
+            authDomain: "banco-de-dados-71102.firebaseapp.com",
+            projectId: "banco-de-dados-71102",
+            storageBucket: "banco-de-dados-71102.appspot.com",
+            messagingSenderId: "255307382507",
+            appId: "1:255307382507:web:0be9917f3791ccce0b08ae",
+            measurementId: "G-5HNHZ84FSC"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Painel de Status de Empréstimo</h1>
+        <p>Acompanhe o status do seu empréstimo com a Bcred Consultoria</p>
+    </header>
+
+    <!-- Login Cliente -->
+    <div class="login-section" id="loginSection">
+        <h2>Login do Cliente</h2>
+        <input type="text" id="username" placeholder="CPF (somente números)" maxlength="11">
+        <input type="password" id="password" placeholder="Senha">
+        <button onclick="loginCliente()">Entrar</button>
+        <p style="margin-top:20px">
+            <a href="#" onclick="showAdminLogin()">Acesso Administrador</a>
+        </p>
+    </div>
+
+    <!-- Painel Cliente -->
+    <div class="dashboard" id="dashboard">
+        <h2>Status do Empréstimo</h2>
+        <p><strong>Nome:</strong> <span id="clientName"></span></p>
+        <p><strong>Valor do Empréstimo:</strong> <span id="loanAmount"></span></p>
+        <p><strong>Número de Parcelas:</strong> <span id="installments"></span></p>
+        <p><strong>Valor da Parcela:</strong> <span id="monthlyPayment"></span></p>
+        <p class="status"><strong>Status:</strong> <span id="loanStatus"></span></p>
+        <button class="logout-button" onclick="logout()">Sair</button>
+    </div>
+
+    <!-- Login Admin -->
+    <div class="admin-login-section" id="adminLoginSection" style="display:none">
+        <h2>Login Administrador</h2>
+        <input type="text" id="adminEmail" placeholder="Email administrativo">
+        <input type="password" id="adminPassword" placeholder="Senha">
+        <button onclick="loginAdmin()">Entrar</button>
+        <p style="margin-top:20px">
+            <a href="#" onclick="showClientLogin()">Voltar ao Cliente</a>
+        </p>
+    </div>
+
+    <!-- Painel Admin -->
+    <div class="admin-dashboard" id="adminDashboard">
+        <h2>Painel Administrativo</h2>
+        
+        <div class="add-client-form">
+            <h3>Novo Cliente</h3>
+            <input type="text" id="newCpf" placeholder="CPF" maxlength="11">
+            <input type="text" id="newName" placeholder="Nome Completo">
+            <input type="number" id="newLoanAmount" placeholder="Valor do Empréstimo">
+            <input type="number" id="newInstallments" placeholder="Parcelas">
+            <input type="password" id="newPassword" placeholder="Senha">
+            <select id="newStatus">
+                <option value="Aprovado">Aprovado</option>
+                <option value="Em Análise">Em Análise</option>
+                <option value="Reprovado">Reprovado</option>
+            </select>
+            <button onclick="addCliente()">Adicionar Cliente</button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>CPF</th>
+                    <th>Nome</th>
+                    <th>Valor</th>
+                    <th>Parcelas</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="clientList"></tbody>
+        </table>
+        <button class="logout-button" onclick="logoutAdmin()">Sair</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2023 Bcred Consultoria. Todos os direitos reservados.</p>
+    </footer>
+
+    <script>
+        // Funções de Formatação
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+
+        // Controle de Login
+        async function loginCliente() {
+            const cpf = document.getElementById('username').value.replace(/\D/g, '');
+            const senha = document.getElementById('password').value;
+
+            try {
+                const snapshot = await db.collection('clientes')
+                    .where('cpf', '==', cpf)
+                    .where('senha', '==', senha)
+                    .get();
+
+                if (!snapshot.empty) {
+                    const cliente = snapshot.docs[0].data();
+                    exibirPainelCliente(cliente);
+                } else {
+                    alert('Credenciais inválidas');
+                }
+            } catch (error) {
+                alert('Erro ao fazer login');
+                console.error(error);
+            }
+        }
+
+        function exibirPainelCliente(cliente) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            
+            document.getElementById('clientName').textContent = cliente.nome;
+            document.getElementById('loanAmount').textContent = formatarMoeda(cliente.valor);
+            document.getElementById('installments').textContent = `${cliente.parcelas}x`;
+            document.getElementById('monthlyPayment').textContent = formatarMoeda(cliente.valorParcela);
+            document.getElementById('loanStatus').textContent = cliente.status;
+        }
+
+        // Administração
+        async function loginAdmin() {
+            const email = document.getElementById('adminEmail').value;
+            const senha = document.getElementById('adminPassword').value;
+
+            try {
+                await auth.signInWithEmailAndPassword(email, senha);
+                document.getElementById('adminLoginSection').style.display = 'none';
+                document.getElementById('adminDashboard').style.display = 'block';
+                carregarClientes();
+            } catch (error) {
+                alert('Credenciais administrativas inválidas');
+                console.error(error);
+            }
+        }
+
+        async function carregarClientes() {
+            const tbody = document.getElementById('clientList');
+            tbody.innerHTML = '';
+
+            const snapshot = await db.collection('clientes').get();
+            snapshot.forEach(doc => {
+                const cliente = doc.data();
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${cliente.cpf}</td>
+                        <td>${cliente.nome}</td>
+                        <td>${formatarMoeda(cliente.valor)}</td>
+                        <td>${cliente.parcelas}x</td>
+                        <td>
+                            <select onchange="atualizarStatus('${doc.id}', this.value)">
+                                <option ${cliente.status === 'Aprovado' ? 'selected' : ''}>Aprovado</option>
+                                <option ${cliente.status === 'Em Análise' ? 'selected' : ''}>Em Análise</option>
+                                <option ${cliente.status === 'Reprovado' ? 'selected' : ''}>Reprovado</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button onclick="excluirCliente('${doc.id}')">Excluir</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function atualizarStatus(id, novoStatus) {
+            try {
+                await db.collection('clientes').doc(id).update({ status: novoStatus });
+                alert('Status atualizado!');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        async function excluirCliente(id) {
+            if (confirm('Confirmar exclusão?')) {
+                await db.collection('clientes').doc(id).delete();
+                carregarClientes();
+            }
+        }
+
+        async function addCliente() {
+            const novoCliente = {
+                cpf: document.getElementById('newCpf').value.replace(/\D/g, ''),
+                nome: document.getElementById('newName').value,
+                valor: parseFloat(document.getElementById('newLoanAmount').value),
+                parcelas: parseInt(document.getElementById('newInstallments').value),
+                senha: document.getElementById('newPassword').value,
+                status: document.getElementById('newStatus').value,
+                valorParcela: parseFloat(document.getElementById('newLoanAmount').value) / 
+                             parseInt(document.getElementById('newInstallments').value)
+            };
+
+            try {
+                await db.collection('clientes').add(novoCliente);
+                carregarClientes();
+                document.querySelector('.add-client-form').reset();
+                alert('Cliente adicionado!');
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Controle de Sessão
+        auth.onAuthStateChanged(usuario => {
+            if (usuario) {
+                document.getElementById('adminDashboard').style.display = 'block';
+                document.getElementById('loginSection').style.display = 'none';
+                carregarClientes();
+            }
+        });
+
+        // Funções Auxiliares
+        function showAdminLogin() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('adminLoginSection').style.display = 'block';
+        }
+
+        function showClientLogin() {
+            document.getElementById('adminLoginSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        }
+
+        function logout() {
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        }
+
+        function logoutAdmin() {
+            auth.signOut();
+            document.getElementById('adminDashboard').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
