@@ -41,7 +41,7 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // Exporta para o escopo global para uso no script principal
+    // Exporta para o escopo global para uso posterior
     window.db = db;
     window.auth = auth;
     window.addDoc = addDoc;
@@ -317,7 +317,7 @@
       }
     }
 
-    // Login do Administrador (usando Firebase Auth)
+    // Login do Administrador (Firebase Auth)
     async function loginAdmin() {
       const email = document.getElementById('adminEmail').value.trim();
       const senha = document.getElementById('adminPassword').value.trim();
@@ -338,7 +338,7 @@
       }
     }
 
-    // Adiciona um novo cliente (painel admin)
+    // Adiciona um novo cliente (Painel Admin)
     async function addCliente() {
       const novoCliente = {
         cpf: document.getElementById('newCpf').value.replace(/\D/g, ''),
@@ -453,11 +453,16 @@
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('adminLoginSection').style.display = 'block';
     }
+
     // Alterna para a tela de login do cliente
     function showClientLogin() {
       document.getElementById('adminLoginSection').style.display = 'none';
       document.getElementById('loginSection').style.display = 'block';
     }
+
+    // Expondo as funções para o escopo global (necessário para onclick inline)
+    window.showAdminLogin = showAdminLogin;
+    window.showClientLogin = showClientLogin;
 
     // Eventos dos botões
     document.getElementById('clienteLoginBtn').addEventListener('click', loginCliente);
