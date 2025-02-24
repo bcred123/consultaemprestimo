@@ -460,9 +460,11 @@
       document.getElementById('loginSection').style.display = 'block';
     }
 
-    // Expondo as funções para o escopo global (necessário para onclick inline)
+    // Expondo funções para o escopo global (necessário para atributos inline)
     window.showAdminLogin = showAdminLogin;
     window.showClientLogin = showClientLogin;
+    window.excluirCliente = excluirCliente;
+    window.atualizarStatus = atualizarStatus;
 
     // Eventos dos botões
     document.getElementById('clienteLoginBtn').addEventListener('click', loginCliente);
@@ -475,7 +477,6 @@
     onAuthStateChanged(auth, (usuario) => {
       if (usuario) {
         console.log("Usuário admin autenticado:", usuario.email);
-        // Caso o admin esteja autenticado, garante que a tela de login admin seja ocultada
         document.getElementById('adminLoginSection').style.display = 'none';
         document.getElementById('adminDashboard').style.display = 'block';
         carregarClientes();
