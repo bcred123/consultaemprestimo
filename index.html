@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel de Status - Bcred Consultoria</title>
   
-  <!-- Firebase SDK (Versão Modular v9) -->
+  <!-- Firebase SDK (Modular v9) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
     import { 
@@ -41,16 +41,24 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // Exportar para escopo global
+    // Exporta para o escopo global para ser usado no script abaixo
     window.db = db;
     window.auth = auth;
-    window.firebaseTools = {
-      firestore: { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where },
-      auth: { signInWithEmailAndPassword, signOut, onAuthStateChanged }
-    };
+    window.addDoc = addDoc;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.updateDoc = updateDoc;
+    window.deleteDoc = deleteDoc;
+    window.doc = doc;
+    window.query = query;
+    window.where = where;
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.signOut = signOut;
+    window.onAuthStateChanged = onAuthStateChanged;
   </script>
-
+  
   <style>
+    /* Estilos Gerais */
     body {
       font-family: Arial, sans-serif;
       margin: 0;
@@ -72,6 +80,7 @@
       font-size: 18px;
       margin-top: 10px;
     }
+    /* Seção de Login (Cliente e Admin) */
     .login-section, .admin-login-section {
       background: #ffffff;
       padding: 40px 20px;
@@ -102,6 +111,7 @@
     .login-section button:hover, .admin-login-section button:hover {
       background-color: #005bb5;
     }
+    /* Painel do Cliente */
     .dashboard {
       display: none;
       background: #ffffff;
@@ -142,6 +152,7 @@
     .logout-button:hover {
       background-color: #e64a19;
     }
+    /* Painel Administrativo */
     .admin-dashboard {
       display: none;
       background: #ffffff;
@@ -187,18 +198,18 @@
     <p>Acompanhe o status do seu empréstimo com a Bcred Consultoria</p>
   </header>
 
-  <!-- Login Cliente -->
+  <!-- Login do Cliente -->
   <div class="login-section" id="loginSection">
     <h2>Login do Cliente</h2>
     <input type="text" id="username" placeholder="CPF (somente números)" maxlength="11">
     <input type="password" id="password" placeholder="Senha">
-    <button onclick="loginCliente()">Entrar</button>
+    <button id="clienteLoginBtn">Entrar</button>
     <p style="margin-top:20px">
       <a href="#" onclick="showAdminLogin()">Acesso Administrador</a>
     </p>
   </div>
 
-  <!-- Painel Cliente -->
+  <!-- Painel do Cliente -->
   <div class="dashboard" id="dashboard">
     <h2>Status do Empréstimo</h2>
     <p><strong>Nome:</strong> <span id="clientName"></span></p>
@@ -206,21 +217,21 @@
     <p><strong>Número de Parcelas:</strong> <span id="installments"></span></p>
     <p><strong>Valor da Parcela:</strong> <span id="monthlyPayment"></span></p>
     <p class="status"><strong>Status:</strong> <span id="loanStatus"></span></p>
-    <button class="logout-button" onclick="logout()">Sair</button>
+    <button class="logout-button" id="clienteLogoutBtn">Sair</button>
   </div>
 
-  <!-- Login Admin -->
+  <!-- Login do Administrador -->
   <div class="admin-login-section" id="adminLoginSection" style="display:none">
     <h2>Login Administrador</h2>
     <input type="text" id="adminEmail" placeholder="Email administrativo">
     <input type="password" id="adminPassword" placeholder="Senha">
-    <button onclick="loginAdmin()">Entrar</button>
+    <button id="adminLoginBtn">Entrar</button>
     <p style="margin-top:20px">
       <a href="#" onclick="showClientLogin()">Voltar ao Cliente</a>
     </p>
   </div>
 
-  <!-- Painel Admin -->
+  <!-- Painel Administrativo -->
   <div class="admin-dashboard" id="adminDashboard">
     <h2>Painel Administrativo</h2>
     
@@ -236,7 +247,7 @@
         <option value="Em Análise">Em Análise</option>
         <option value="Reprovado">Reprovado</option>
       </select>
-      <button onclick="addCliente()">Adicionar Cliente</button>
+      <button id="addClienteBtn">Adicionar Cliente</button>
     </div>
 
     <table>
@@ -252,36 +263,48 @@
       </thead>
       <tbody id="clientList"></tbody>
     </table>
-    <button class="logout-button" onclick="logoutAdmin()">Sair</button>
+    <button class="logout-button" id="adminLogoutBtn">Sair</button>
   </div>
 
   <footer>
     <p>&copy; 2023 Bcred Consultoria. Todos os direitos reservados.</p>
   </footer>
 
-  <script>
-    // Função para formatação de moeda
+  <!-- Script principal -->
+  <script type="module">
+    import { addDoc, collection, getDocs, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+    import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+    
+    const db = window.db;
+    const auth = window.auth;
+
+    // Formatação de moeda
     function formatarMoeda(valor) {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      }).format(valor);
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
 
-    // Controle de Login do Cliente
+    // Exibe o painel do cliente com os dados retornados do Firestore
+    function exibirPainelCliente(cliente) {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('clientName').textContent = cliente.nome;
+      document.getElementById('loanAmount').textContent = formatarMoeda(cliente.valor);
+      document.getElementById('installments').textContent = cliente.parcelas + "x";
+      document.getElementById('monthlyPayment').textContent = formatarMoeda(cliente.valorParcela);
+      document.getElementById('loanStatus').textContent = cliente.status;
+    }
+
+    // Login do Cliente (usando consulta no Firestore)
     async function loginCliente() {
       const cpf = document.getElementById('username').value.replace(/\D/g, '');
       const senha = document.getElementById('password').value;
-
       try {
-        const q = firebaseTools.firestore.query(
-          firebaseTools.firestore.collection(db, 'clientes'),
-          firebaseTools.firestore.where('cpf', '==', cpf),
-          firebaseTools.firestore.where('senha', '==', senha)
+        const q = query(
+          collection(db, 'clientes'),
+          where('cpf', '==', cpf),
+          where('senha', '==', senha)
         );
-        
-        const snapshot = await firebaseTools.firestore.getDocs(q);
-
+        const snapshot = await getDocs(q);
         if (!snapshot.empty) {
           const cliente = snapshot.docs[0].data();
           exibirPainelCliente(cliente);
@@ -289,38 +312,28 @@
           alert('Credenciais inválidas');
         }
       } catch (error) {
-        alert('Erro ao fazer login');
+        alert('Erro ao fazer login do cliente');
         console.error(error);
       }
     }
 
-    function exibirPainelCliente(cliente) {
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      
-      document.getElementById('clientName').textContent = cliente.nome;
-      document.getElementById('loanAmount').textContent = formatarMoeda(cliente.valor);
-      document.getElementById('installments').textContent = `${cliente.parcelas}x`;
-      document.getElementById('monthlyPayment').textContent = formatarMoeda(cliente.valorParcela);
-      document.getElementById('loanStatus').textContent = cliente.status;
-    }
-
-    // Controle de Login do Administrador
+    // Login do Administrador (usando Firebase Auth)
     async function loginAdmin() {
       const email = document.getElementById('adminEmail').value;
       const senha = document.getElementById('adminPassword').value;
-
       try {
-        await firebaseTools.auth.signInWithEmailAndPassword(auth, email, senha);
+        await signInWithEmailAndPassword(auth, email, senha);
+        // Após o login, mostra o painel administrativo e carrega os clientes
         document.getElementById('adminLoginSection').style.display = 'none';
         document.getElementById('adminDashboard').style.display = 'block';
         carregarClientes();
       } catch (error) {
         alert('Credenciais inválidas: ' + error.message);
+        console.error(error);
       }
     }
 
-    // Função para adicionar cliente (corrigida)
+    // Adiciona um novo cliente (função para o admin)
     async function addCliente() {
       const novoCliente = {
         cpf: document.getElementById('newCpf').value.replace(/\D/g, ''),
@@ -329,24 +342,18 @@
         parcelas: parseInt(document.getElementById('newInstallments').value),
         senha: document.getElementById('newPassword').value.trim(),
         status: document.getElementById('newStatus').value,
-        valorParcela: parseFloat(document.getElementById('newLoanAmount').value) / 
-                      parseInt(document.getElementById('newInstallments').value)
+        valorParcela: parseFloat(document.getElementById('newLoanAmount').value) / parseInt(document.getElementById('newInstallments').value)
       };
 
-      // Validação
-      if (!novoCliente.cpf || !novoCliente.nome || isNaN(novoCliente.valor) || 
-          isNaN(novoCliente.parcelas) || !novoCliente.senha) {
+      if (!novoCliente.cpf || !novoCliente.nome || isNaN(novoCliente.valor) || isNaN(novoCliente.parcelas) || !novoCliente.senha) {
         alert('Preencha todos os campos corretamente!');
         return;
       }
 
       try {
-        await firebaseTools.firestore.addDoc(
-          firebaseTools.firestore.collection(db, 'clientes'),
-          novoCliente
-        );
+        await addDoc(collection(db, 'clientes'), novoCliente);
         carregarClientes();
-        // Limpar os campos do formulário manualmente
+        // Limpa os campos do formulário
         document.getElementById('newCpf').value = '';
         document.getElementById('newName').value = '';
         document.getElementById('newLoanAmount').value = '';
@@ -360,18 +367,14 @@
       }
     }
 
-    // Função para carregar clientes
+    // Carrega a lista de clientes no painel administrativo
     async function carregarClientes() {
       const tbody = document.getElementById('clientList');
       tbody.innerHTML = '';
-
       try {
-        const querySnapshot = await firebaseTools.firestore.getDocs(
-          firebaseTools.firestore.collection(db, 'clientes')
-        );
-
-        querySnapshot.forEach((doc) => {
-          const cliente = doc.data();
+        const querySnapshot = await getDocs(collection(db, 'clientes'));
+        querySnapshot.forEach((docSnap) => {
+          const cliente = docSnap.data();
           tbody.innerHTML += `
             <tr>
               <td>${cliente.cpf}</td>
@@ -379,14 +382,14 @@
               <td>${formatarMoeda(cliente.valor)}</td>
               <td>${cliente.parcelas}x</td>
               <td>
-                <select onchange="atualizarStatus('${doc.id}', this.value)">
+                <select onchange="atualizarStatus('${docSnap.id}', this.value)">
                   <option ${cliente.status === 'Aprovado' ? 'selected' : ''}>Aprovado</option>
                   <option ${cliente.status === 'Em Análise' ? 'selected' : ''}>Em Análise</option>
                   <option ${cliente.status === 'Reprovado' ? 'selected' : ''}>Reprovado</option>
                 </select>
               </td>
               <td>
-                <button onclick="excluirCliente('${doc.id}')">Excluir</button>
+                <button onclick="excluirCliente('${docSnap.id}')">Excluir</button>
               </td>
             </tr>
           `;
@@ -396,26 +399,21 @@
       }
     }
 
-    // Função para atualizar status
+    // Atualiza o status do cliente
     async function atualizarStatus(id, novoStatus) {
       try {
-        await firebaseTools.firestore.updateDoc(
-          firebaseTools.firestore.doc(db, 'clientes', id),
-          { status: novoStatus }
-        );
+        await updateDoc(doc(db, 'clientes', id), { status: novoStatus });
         carregarClientes();
       } catch (error) {
         console.error('Erro ao atualizar status:', error);
       }
     }
 
-    // Função para excluir cliente
+    // Exclui um cliente
     async function excluirCliente(id) {
       if (confirm('Confirmar exclusão?')) {
         try {
-          await firebaseTools.firestore.deleteDoc(
-            firebaseTools.firestore.doc(db, 'clientes', id)
-          );
+          await deleteDoc(doc(db, 'clientes', id));
           carregarClientes();
         } catch (error) {
           console.error('Erro ao excluir cliente:', error);
@@ -423,42 +421,57 @@
       }
     }
 
-    // Controle de Sessão
-    firebaseTools.auth.onAuthStateChanged(auth, (usuario) => {
-      if (usuario) {
-        document.getElementById('adminDashboard').style.display = 'block';
-        document.getElementById('loginSection').style.display = 'none';
-        carregarClientes();
-      } else {
-        document.getElementById('adminDashboard').style.display = 'none';
-        document.getElementById('loginSection').style.display = 'block';
-      }
-    });
+    // Logout do Cliente: apenas reseta a exibição
+    function logoutCliente() {
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+    }
 
-    // Funções Auxiliares
+    // Logout do Administrador: chama o signOut do Firebase Auth e reseta os campos
+    async function logoutAdmin() {
+      try {
+        await signOut(auth);
+        document.getElementById('adminDashboard').style.display = 'none';
+        document.getElementById('adminLoginSection').style.display = 'block';
+        document.getElementById('adminEmail').value = '';
+        document.getElementById('adminPassword').value = '';
+      } catch (error) {
+        console.error('Erro ao sair:', error);
+        alert('Erro ao sair: ' + error.message);
+      }
+    }
+
+    // Funções para alternar entre as telas de login
     function showAdminLogin() {
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('adminLoginSection').style.display = 'block';
     }
-
     function showClientLogin() {
       document.getElementById('adminLoginSection').style.display = 'none';
       document.getElementById('loginSection').style.display = 'block';
     }
 
-    function logout() {
-      document.getElementById('dashboard').style.display = 'none';
-      document.getElementById('loginSection').style.display = 'block';
-    }
+    // Eventos dos botões – agora com um clique para cada ação
+    document.getElementById('clienteLoginBtn').addEventListener('click', loginCliente);
+    document.getElementById('adminLoginBtn').addEventListener('click', loginAdmin);
+    document.getElementById('addClienteBtn').addEventListener('click', addCliente);
+    document.getElementById('clienteLogoutBtn').addEventListener('click', logoutCliente);
+    document.getElementById('adminLogoutBtn').addEventListener('click', logoutAdmin);
 
-    async function logoutAdmin() {
-      try {
-        await firebaseTools.auth.signOut(auth);
-        alert('Você saiu do painel administrativo.');
-      } catch (error) {
-        alert('Erro ao sair: ' + error.message);
+    // onAuthStateChanged para manter a sessão do administrador
+    onAuthStateChanged(auth, (usuario) => {
+      if (usuario) {
+        // Se já houver usuário autenticado, mostra o painel administrativo e carrega os clientes
+        document.getElementById('adminLoginSection').style.display = 'none';
+        document.getElementById('adminDashboard').style.display = 'block';
+        carregarClientes();
+      } else {
+        document.getElementById('adminDashboard').style.display = 'none';
+        // Não forçamos a exibição da seção de login do cliente
       }
-    }
+    });
   </script>
 </body>
 </html>
