@@ -41,7 +41,7 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // Exporta para o escopo global para ser usado no script abaixo
+    // Exporta para o escopo global para uso no script principal
     window.db = db;
     window.auth = auth;
     window.addDoc = addDoc;
@@ -278,12 +278,12 @@
     const db = window.db;
     const auth = window.auth;
 
-    // Formatação de moeda
+    // Função para formatação de moeda
     function formatarMoeda(valor) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
 
-    // Exibe o painel do cliente com os dados retornados do Firestore
+    // Exibe o painel do cliente com os dados do Firestore
     function exibirPainelCliente(cliente) {
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
@@ -294,7 +294,7 @@
       document.getElementById('loanStatus').textContent = cliente.status;
     }
 
-    // Login do Cliente (usando consulta no Firestore)
+    // Login do Cliente (consulta no Firestore)
     async function loginCliente() {
       const cpf = document.getElementById('username').value.replace(/\D/g, '');
       const senha = document.getElementById('password').value;
@@ -319,21 +319,26 @@
 
     // Login do Administrador (usando Firebase Auth)
     async function loginAdmin() {
-      const email = document.getElementById('adminEmail').value;
-      const senha = document.getElementById('adminPassword').value;
+      const email = document.getElementById('adminEmail').value.trim();
+      const senha = document.getElementById('adminPassword').value.trim();
+      if (!email || !senha) {
+        alert("Preencha o e-mail e a senha do administrador!");
+        return;
+      }
+      console.log("Tentando login do admin:", email);
       try {
         await signInWithEmailAndPassword(auth, email, senha);
-        // Após o login, mostra o painel administrativo e carrega os clientes
+        console.log("Login admin bem-sucedido");
         document.getElementById('adminLoginSection').style.display = 'none';
         document.getElementById('adminDashboard').style.display = 'block';
         carregarClientes();
       } catch (error) {
-        alert('Credenciais inválidas: ' + error.message);
-        console.error(error);
+        alert('Erro no login do administrador: ' + error.message);
+        console.error("Erro no login do admin:", error);
       }
     }
 
-    // Adiciona um novo cliente (função para o admin)
+    // Adiciona um novo cliente (painel admin)
     async function addCliente() {
       const novoCliente = {
         cpf: document.getElementById('newCpf').value.replace(/\D/g, ''),
@@ -367,7 +372,7 @@
       }
     }
 
-    // Carrega a lista de clientes no painel administrativo
+    // Carrega a lista de clientes para o painel admin
     async function carregarClientes() {
       const tbody = document.getElementById('clientList');
       tbody.innerHTML = '';
@@ -421,7 +426,7 @@
       }
     }
 
-    // Logout do Cliente: apenas reseta a exibição
+    // Logout do Cliente (apenas reseta a exibição)
     function logoutCliente() {
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('loginSection').style.display = 'block';
@@ -429,7 +434,7 @@
       document.getElementById('password').value = '';
     }
 
-    // Logout do Administrador: chama o signOut do Firebase Auth e reseta os campos
+    // Logout do Administrador (usa signOut do Firebase Auth)
     async function logoutAdmin() {
       try {
         await signOut(auth);
@@ -443,17 +448,18 @@
       }
     }
 
-    // Funções para alternar entre as telas de login
+    // Alterna para a tela de login de administrador
     function showAdminLogin() {
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('adminLoginSection').style.display = 'block';
     }
+    // Alterna para a tela de login do cliente
     function showClientLogin() {
       document.getElementById('adminLoginSection').style.display = 'none';
       document.getElementById('loginSection').style.display = 'block';
     }
 
-    // Eventos dos botões – agora com um clique para cada ação
+    // Eventos dos botões
     document.getElementById('clienteLoginBtn').addEventListener('click', loginCliente);
     document.getElementById('adminLoginBtn').addEventListener('click', loginAdmin);
     document.getElementById('addClienteBtn').addEventListener('click', addCliente);
@@ -463,13 +469,13 @@
     // onAuthStateChanged para manter a sessão do administrador
     onAuthStateChanged(auth, (usuario) => {
       if (usuario) {
-        // Se já houver usuário autenticado, mostra o painel administrativo e carrega os clientes
+        console.log("Usuário admin autenticado:", usuario.email);
+        // Caso o admin esteja autenticado, garante que a tela de login admin seja ocultada
         document.getElementById('adminLoginSection').style.display = 'none';
         document.getElementById('adminDashboard').style.display = 'block';
         carregarClientes();
       } else {
         document.getElementById('adminDashboard').style.display = 'none';
-        // Não forçamos a exibição da seção de login do cliente
       }
     });
   </script>
