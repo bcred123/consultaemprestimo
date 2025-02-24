@@ -9,8 +9,8 @@
     <script type="module">
         // Importações do Firebase (versão modular)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
         // Configuração do Firebase
         const firebaseConfig = {
@@ -32,6 +32,15 @@
         window.auth = auth;
         window.signInWithEmailAndPassword = signInWithEmailAndPassword;
         window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
+        window.query = query;
+        window.where = where;
     </script>
 
     <style>
@@ -259,10 +268,8 @@
             const senha = document.getElementById('password').value;
 
             try {
-                const snapshot = await db.collection('clientes')
-                    .where('cpf', '==', cpf)
-                    .where('senha', '==', senha)
-                    .get();
+                const q = query(collection(db, 'clientes'), where('cpf', '==', cpf), where('senha', '==', senha));
+                const snapshot = await getDocs(q);
 
                 if (!snapshot.empty) {
                     const cliente = snapshot.docs[0].data();
@@ -313,7 +320,7 @@
             const tbody = document.getElementById('clientList');
             tbody.innerHTML = '';
 
-            const snapshot = await db.collection('clientes').get();
+            const snapshot = await getDocs(collection(db, 'clientes'));
             snapshot.forEach(doc => {
                 const cliente = doc.data();
                 tbody.innerHTML += `
@@ -340,8 +347,9 @@
         // Função para atualizar o status do cliente
         async function atualizarStatus(id, novoStatus) {
             try {
-                await db.collection('clientes').doc(id).update({ status: novoStatus });
+                await updateDoc(doc(db, 'clientes', id), { status: novoStatus });
                 alert('Status atualizado!');
+                carregarClientes(); // Recarrega a lista de clientes
             } catch (error) {
                 console.error(error);
             }
@@ -350,7 +358,7 @@
         // Função para excluir um cliente
         async function excluirCliente(id) {
             if (confirm('Confirmar exclusão?')) {
-                await db.collection('clientes').doc(id).delete();
+                await deleteDoc(doc(db, 'clientes', id));
                 carregarClientes();
             }
         }
@@ -369,17 +377,18 @@
             };
 
             try {
-                await db.collection('clientes').add(novoCliente);
+                await addDoc(collection(db, 'clientes'), novoCliente);
                 carregarClientes();
                 document.querySelector('.add-client-form').reset();
                 alert('Cliente adicionado!');
             } catch (error) {
                 console.error(error);
+                alert('Erro ao adicionar cliente. Verifique o console para mais detalhes.');
             }
         }
 
         // Controle de Sessão
-        auth.onAuthStateChanged(usuario => {
+        onAuthStateChanged(auth, (usuario) => {
             if (usuario) {
                 // Se o administrador estiver logado, exibe o painel administrativo
                 document.getElementById('adminDashboard').style.display = 'block';
