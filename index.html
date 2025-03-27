@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Bcred - Empréstimos</title>
-   
+    <title>Bcred - Sistema de Empréstimos</title>
+    
     <!-- Firebase SDK v9 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
-        import {
-            getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where
+        import { 
+            getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where 
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
-        import {
-            getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+        import { 
+            getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // Configuração do Firebase (SUAS CREDENCIAIS)
+        // Configuração do Firebase (USE SUAS CREDENCIAIS)
         const firebaseConfig = {
             apiKey: "AIzaSyDmmCx_DPXFUnwBmKiqCjZfyjGv7O8SxPg",
             authDomain: "bcredemprestimo.firebaseapp.com",
@@ -30,241 +30,43 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Função para cálculo da parcela com juros de 1.35%
-        const calcularParcela = (valor, parcelas) => {
-            const taxaJuros = 1.35 / 100;
-            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas)).toFixed(2);
-        };
-
         // Funções globais
         window.auth = auth;
         window.db = db;
-        window.calcularParcela = calcularParcela;
-    </script>
-
-    <style>
-        :root {
-            --primary: #0073e6;
-            --danger: #dc3545;
-            --background: #f8f9fa;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Arial', sans-serif;
-        }
-
-        body {
-            background: var(--background);
-        }
-
-        header {
-            background: var(--primary);
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 2rem;
-            margin: 2rem 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        input, select, button {
-            width: 100%;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: opacity 0.3s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .logout-btn {
-            background: var(--danger);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-        }
-
-        th, td {
-            padding: 1rem;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-
-        .hidden {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>Bcred Consultoria Financeira</h1>
-        <p>Soluções completas para seu empréstimo</p>
-    </header>
-
-    <!-- Login Cliente -->
-    <div class="container" id="loginCliente">
-        <div class="card">
-            <h2>Acesso do Cliente</h2>
-            <input type="text" id="cpf" placeholder="CPF (somente números)" maxlength="11">
-            <input type="password" id="senhaCliente" placeholder="Senha">
-            <button onclick="loginCliente()">Acessar</button>
-            <p style="text-align: center; margin-top: 1rem;">
-                <a href="#" onclick="showAdmin()" style="color: var(--primary);">Acesso Administrativo</a>
-            </p>
-        </div>
-    </div>
-
-    <!-- Painel Cliente -->
-    <div class="container hidden" id="painelCliente">
-        <div class="card">
-            <h2>Seu Empréstimo</h2>
-            <div id="dadosCliente">
-                <p><strong>Nome:</strong> <span id="clienteNome">-</span></p>
-                <p><strong>Valor:</strong> <span id="clienteValor">-</span></p>
-                <p><strong>Parcelas:</strong> <span id="clienteParcelas">-</span></p>
-                <p><strong>Valor Parcela:</strong> <span id="clienteParcela">-</span></p>
-                <p><strong>Status:</strong> <span id="clienteStatus">-</span></p>
-            </div>
-            <button class="logout-btn" onclick="logout()">Sair</button>
-        </div>
-    </div>
-
-    <!-- Login Admin -->
-    <div class="container hidden" id="loginAdmin">
-        <div class="card">
-            <h2>Acesso Administrativo</h2>
-            <input type="email" id="emailAdmin" placeholder="E-mail administrativo">
-            <input type="password" id="senhaAdmin" placeholder="Senha">
-            <button onclick="loginAdmin()">Acessar</button>
-            <p style="text-align: center; margin-top: 1rem;">
-                <a href="#" onclick="showCliente()" style="color: var(--primary);">Voltar ao Cliente</a>
-            </p>
-        </div>
-    </div>
-
-    <!-- Painel Admin -->
-    <div class="container hidden" id="painelAdmin">
-        <div class="card">
-            <h2>Gestão de Clientes</h2>
-           
-            <div class="card" style="background: var(--background);">
-                <h3>Novo Cliente</h3>
-                <input type="text" id="novoCpf" placeholder="CPF (11 dígitos)">
-                <input type="text" id="novoNome" placeholder="Nome completo">
-                <input type="number" id="novoValor" placeholder="Valor do empréstimo (R$)">
-                <input type="number" id="novoParcelas" placeholder="Número de parcelas">
-                <input type="password" id="novaSenha" placeholder="Senha">
-                <select id="novoStatus">
-                    <option value="Aprovado">Aprovado</option>
-                    <option value="Em Análise">Em Análise</option>
-                    <option value="Reprovado">Reprovado</option>
-                </select>
-                <button onclick="cadastrarCliente()">Cadastrar</button>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>CPF</th>
-                        <th>Nome</th>
-                        <th>Valor</th>
-                        <th>Parcelas</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="listaClientes"></tbody>
-            </table>
-            <button class="logout-btn" onclick="logout()">Sair</button>
-        </div>
-    </div>
-
-    <!-- Script Principal -->
-    <script>
-        // Controle de Interface
-        const sections = {
-            loginCliente: document.getElementById('loginCliente'),
-            painelCliente: document.getElementById('painelCliente'),
-            loginAdmin: document.getElementById('loginAdmin'),
-            painelAdmin: document.getElementById('painelAdmin')
-        };
-
-        const showSection = (section) => {
-            Object.values(sections).forEach(el => el.classList.add('hidden'));
-            document.getElementById(section).classList.remove('hidden'));
-        };
-
-        // Autenticação
-        async function loginCliente() {
+        window.loginCliente = async () => {
             const cpf = document.getElementById('cpf').value.replace(/\D/g, '');
             const senha = document.getElementById('senhaCliente').value;
-
             try {
-                const q = query(
-                    collection(db, 'clientes'),
-                    where('cpf', '==', cpf),
-                    where('senha', '==', senha)
-                );
-
+                const q = query(collection(db, 'clientes'), where('cpf', '==', cpf), where('senha', '==', senha));
                 const snapshot = await getDocs(q);
-                if (snapshot.empty) return alert('Credenciais inválidas!');
-
+                if (snapshot.empty) return alert('CPF ou senha incorretos!');
                 const cliente = snapshot.docs[0].data();
                 document.getElementById('clienteNome').textContent = cliente.nome;
                 document.getElementById('clienteValor').textContent = `R$ ${cliente.valor.toFixed(2)}`;
                 document.getElementById('clienteParcelas').textContent = `${cliente.parcelas}x`;
                 document.getElementById('clienteParcela').textContent = `R$ ${cliente.valorParcela.toFixed(2)}`;
                 document.getElementById('clienteStatus').textContent = cliente.status;
-                showSection('painelCliente');
+                document.getElementById('loginCliente').classList.add('hidden');
+                document.getElementById('painelCliente').classList.remove('hidden');
             } catch (error) {
                 alert(`Erro: ${error.message}`);
             }
-        }
+        };
 
-        async function loginAdmin() {
+        window.loginAdmin = async () => {
             const email = document.getElementById('emailAdmin').value;
             const senha = document.getElementById('senhaAdmin').value;
-
             try {
                 await signInWithEmailAndPassword(auth, email, senha);
+                document.getElementById('loginAdmin').classList.add('hidden');
+                document.getElementById('painelAdmin').classList.remove('hidden');
                 await carregarClientes();
-                showSection('painelAdmin');
             } catch (error) {
                 alert(`Erro: ${error.message}`);
             }
-        }
+        };
 
-        // Gestão de Clientes
-        async function cadastrarCliente() {
+        window.cadastrarCliente = async () => {
             const novoCliente = {
                 cpf: document.getElementById('novoCpf').value.replace(/\D/g, ''),
                 nome: document.getElementById('novoNome').value.trim(),
@@ -272,32 +74,23 @@
                 parcelas: parseInt(document.getElementById('novoParcelas').value),
                 senha: document.getElementById('novaSenha').value,
                 status: document.getElementById('novoStatus').value,
-                valorParcela: parseFloat(calcularParcela(
-                    parseFloat(document.getElementById('novoValor').value),
-                    parseInt(document.getElementById('novoParcelas').value)
-                )
+                valorParcela: (parseFloat(document.getElementById('novoValor').value * 0.0135) / 
+                    (1 - Math.pow(1.0135, -parseInt(document.getElementById('novoParcelas').value))
             };
-
             try {
-                // Verificar CPF único
-                const cpfExistente = await getDocs(query(
-                    collection(db, 'clientes'),
-                    where('cpf', '==', novoCliente.cpf)
-                ));
+                const cpfExistente = await getDocs(query(collection(db, 'clientes'), where('cpf', '==', novoCliente.cpf)));
                 if (!cpfExistente.empty) return alert('CPF já cadastrado!');
-
                 await addDoc(collection(db, 'clientes'), novoCliente);
                 alert('Cliente cadastrado!');
                 carregarClientes();
             } catch (error) {
                 alert(`Erro: ${error.message}`);
             }
-        }
+        };
 
         async function carregarClientes() {
             const tbody = document.getElementById('listaClientes');
             tbody.innerHTML = '';
-
             const snapshot = await getDocs(collection(db, 'clientes'));
             snapshot.forEach((doc) => {
                 const cliente = doc.data();
@@ -308,39 +101,98 @@
                         <td>R$ ${cliente.valor.toFixed(2)}</td>
                         <td>${cliente.parcelas}x</td>
                         <td>${cliente.status}</td>
-                        <td>
-                            <button onclick="excluirCliente('${doc.id}')">Excluir</button>
-                        </td>
+                        <td><button onclick="excluirCliente('${doc.id}')">Excluir</button></td>
                     </tr>
                 `;
             });
         }
 
-        async function excluirCliente(id) {
+        window.excluirCliente = async (id) => {
             if (confirm('Confirmar exclusão?')) {
                 await deleteDoc(doc(db, 'clientes', id));
                 carregarClientes();
             }
-        }
+        };
 
-        // Funções Auxiliares
-        function logout() {
+        window.logout = () => {
             signOut(auth);
-            showSection('loginCliente');
-            document.getElementById('cpf').value = '';
-            document.getElementById('senhaCliente').value = '';
-        }
-
-        function showAdmin() { showSection('loginAdmin'); }
-        function showCliente() { showSection('loginCliente'); }
-
-        // Inicialização
-        onAuthStateChanged(auth, (user) => {
-            if (user && user.email === 'admin@bcred.com') {
-                showSection('painelAdmin');
-                carregarClientes();
-            }
-        });
+            document.querySelectorAll('.hidden').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('painelCliente').classList.add('hidden');
+            document.getElementById('painelAdmin').classList.add('hidden'));
+            document.getElementById('loginCliente').classList.remove('hidden'));
+        };
     </script>
+
+    <style>
+        :root { --primary: #0073e6; --danger: #dc3545; }
+        body { font-family: Arial, sans-serif; margin: 0; background: #f8f9fa; }
+        .hidden { display: none; }
+        .card { background: white; max-width: 800px; margin: 2rem auto; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 1rem; margin: 0.5rem 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: var(--primary); color: white; border: none; cursor: pointer; }
+        .logout-btn { background: var(--danger); }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 1rem; border: 1px solid #ddd; text-align: left; }
+    </style>
+</head>
+<body>
+    <!-- Login Cliente -->
+    <div class="card" id="loginCliente">
+        <h2>Acesso do Cliente</h2>
+        <input type="text" id="cpf" placeholder="CPF (11 dígitos)" maxlength="11">
+        <input type="password" id="senhaCliente" placeholder="Senha">
+        <button onclick="loginCliente()">Entrar</button>
+        <button class="logout-btn" onclick="document.getElementById('loginAdmin').classList.remove('hidden'); this.parentElement.classList.add('hidden')">Acesso Admin</button>
+    </div>
+
+    <!-- Painel Cliente -->
+    <div class="card hidden" id="painelCliente">
+        <h2>Seu Empréstimo</h2>
+        <p><strong>Nome:</strong> <span id="clienteNome">-</span></p>
+        <p><strong>Valor:</strong> <span id="clienteValor">-</span></p>
+        <p><strong>Parcelas:</strong> <span id="clienteParcelas">-</span></p>
+        <p><strong>Valor Parcela:</strong> <span id="clienteParcela">-</span></p>
+        <p><strong>Status:</strong> <span id="clienteStatus">-</span></p>
+        <button class="logout-btn" onclick="logout()">Sair</button>
+    </div>
+
+    <!-- Login Admin -->
+    <div class="card hidden" id="loginAdmin">
+        <h2>Acesso Administrativo</h2>
+        <input type="email" id="emailAdmin" placeholder="admin@bcred.com">
+        <input type="password" id="senhaAdmin" placeholder="Senha">
+        <button onclick="loginAdmin()">Entrar</button>
+        <button class="logout-btn" onclick="document.getElementById('loginCliente').classList.remove('hidden'); this.parentElement.classList.add('hidden')">Voltar</button>
+    </div>
+
+    <!-- Painel Admin -->
+    <div class="card hidden" id="painelAdmin">
+        <h2>Gestão de Clientes</h2>
+        <input type="text" id="novoCpf" placeholder="CPF do cliente">
+        <input type="text" id="novoNome" placeholder="Nome completo">
+        <input type="number" id="novoValor" placeholder="Valor do empréstimo">
+        <input type="number" id="novoParcelas" placeholder="Número de parcelas">
+        <input type="password" id="novaSenha" placeholder="Senha">
+        <select id="novoStatus">
+            <option value="Aprovado">Aprovado</option>
+            <option value="Em Análise">Em Análise</option>
+            <option value="Reprovado">Reprovado</option>
+        </select>
+        <button onclick="cadastrarCliente()">Cadastrar</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>CPF</th>
+                    <th>Nome</th>
+                    <th>Valor</th>
+                    <th>Parcelas</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="listaClientes"></tbody>
+        </table>
+        <button class="logout-btn" onclick="logout()">Sair</button>
+    </div>
 </body>
 </html>
