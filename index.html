@@ -29,19 +29,23 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Controle de navegação
+        // ============== CONTROLE DE TELAS ==============
         const showSection = (sectionId) => {
             document.querySelectorAll('[data-section]').forEach(el => {
-                el.classList.add('hidden');
+                el.style.display = 'none';
             });
-            document.getElementById(sectionId).classList.remove('hidden');
+            document.getElementById(sectionId).style.display = 'block';
         };
 
-        // Login do Cliente
+        // ============== FUNÇÕES DO CLIENTE ==============
         window.loginCliente = async () => {
             try {
                 const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
                 const senha = document.getElementById('senhaCliente').value;
+
+                // Validação básica
+                if(cpf.length !== 11) throw new Error('CPF deve ter 11 dígitos!');
+                if(!senha) throw new Error('Digite a senha!');
 
                 const q = query(
                     collection(db, 'clientes'),
@@ -50,7 +54,7 @@
                 );
                
                 const snapshot = await getDocs(q);
-                if (snapshot.empty) throw new Error('Credenciais inválidas!');
+                if(snapshot.empty) throw new Error('Credenciais inválidas!');
 
                 const cliente = snapshot.docs[0].data();
                 document.getElementById('nomeCliente').textContent = cliente.nome;
@@ -65,11 +69,18 @@
             }
         };
 
-        // Login do Admin
+        // ============== FUNÇÕES DO ADMIN ==============
+        window.showAdminLogin = () => {
+            showSection('loginAdmin');
+            document.getElementById('loginCliente').style.display = 'none';
+        };
+
         window.loginAdmin = async () => {
             try {
                 const email = document.getElementById('emailAdmin').value;
                 const senha = document.getElementById('senhaAdmin').value;
+               
+                if(!email || !senha) throw new Error('Preencha todos os campos!');
                
                 await signInWithEmailAndPassword(auth, email, senha);
                 showSection('painelAdmin');
@@ -80,7 +91,6 @@
             }
         };
 
-        // Cadastro de Clientes
         window.cadastrarCliente = async () => {
             try {
                 const novoCliente = {
@@ -93,8 +103,10 @@
                     valorParcela: calcularParcela(
                         parseFloat(document.getElementById('novoValor').value),
                         parseInt(document.getElementById('novoParcelas').value)
-                    )
                 };
+
+                if(novoCliente.cpf.length !== 11) throw new Error('CPF inválido!');
+                if(novoCliente.parcelas <= 0) throw new Error('Número de parcelas inválido!');
 
                 const cpfExistente = await getDocs(query(
                     collection(db, 'clientes'),
@@ -111,9 +123,9 @@
             }
         };
 
-        // Funções auxiliares
+        // ============== FUNÇÕES AUXILIARES ==============
         const calcularParcela = (valor, parcelas) => {
-            const taxaJuros = 0.0135; // 1.35% ao mês
+            const taxaJuros = 0.0135;
             return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas));
         };
 
@@ -137,7 +149,7 @@
         };
 
         window.excluirCliente = async (id) => {
-            if (confirm('Confirmar exclusão?')) {
+            if(confirm('Tem certeza que deseja excluir?')) {
                 await deleteDoc(doc(db, 'clientes', id));
                 await carregarClientes();
             }
@@ -150,9 +162,10 @@
             document.getElementById('senhaCliente').value = '';
         };
 
-        // Verifica estado de login ao carregar
+        // ============== INICIALIZAÇÃO ==============
         onAuthStateChanged(auth, (user) => {
-            if (user) showSection('painelAdmin');
+            if(user) showSection('painelAdmin');
+            else showSection('loginCliente');
         });
 
     </script>
@@ -171,7 +184,9 @@
             background: var(--background);
         }
 
-        .hidden { display: none; }
+        [data-section] {
+            display: none;
+        }
 
         .section {
             background: white;
@@ -199,8 +214,13 @@
             transition: opacity 0.3s;
         }
 
-        button:hover { opacity: 0.9; }
-        .logout-btn { background: var(--danger); }
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .logout-btn {
+            background: var(--danger);
+        }
 
         table {
             width: 100%;
@@ -222,10 +242,11 @@
         <input type="text" id="cpfCliente" placeholder="CPF (somente números)" maxlength="11">
         <input type="password" id="senhaCliente" placeholder="Senha">
         <button onclick="loginCliente()">Entrar</button>
-        <button class="logout-btn" onclick="showSection('loginAdmin')">Acesso Admin</button>
+        <button class="logout-btn" onclick="showAdminLogin()">Acesso Admin</button>
     </div>
 
-    <div class="section hidden" id="painelCliente" data-section>
+    <!-- Painel Cliente -->
+    <div class="section" id="painelCliente" data-section>
         <h2>Seu Empréstimo</h2>
         <p><strong>Nome:</strong> <span id="nomeCliente">-</span></p>
         <p><strong>Valor:</strong> <span id="valorCliente">-</span></p>
@@ -235,8 +256,8 @@
         <button class="logout-btn" onclick="logout()">Sair</button>
     </div>
 
-    <!-- Seção Admin -->
-    <div class="section hidden" id="loginAdmin" data-section>
+    <!-- Login Admin -->
+    <div class="section" id="loginAdmin" data-section>
         <h2>Acesso Administrativo</h2>
         <input type="email" id="emailAdmin" placeholder="admin@bcred.com">
         <input type="password" id="senhaAdmin" placeholder="Senha">
@@ -244,7 +265,8 @@
         <button class="logout-btn" onclick="showSection('loginCliente')">Voltar</button>
     </div>
 
-    <div class="section hidden" id="painelAdmin" data-section>
+    <!-- Painel Admin -->
+    <div class="section" id="painelAdmin" data-section>
         <h2>Gestão de Clientes</h2>
         <div style="margin-bottom: 30px;">
             <h3>Cadastrar Novo Cliente</h3>
