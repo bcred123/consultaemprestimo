@@ -29,23 +29,19 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ============== CONTROLE DE TELAS ==============
+        // Controle de navegação
         const showSection = (sectionId) => {
             document.querySelectorAll('[data-section]').forEach(el => {
-                el.style.display = 'none';
+                el.classList.add('hidden');
             });
-            document.getElementById(sectionId).style.display = 'block';
+            document.getElementById(sectionId).classList.remove('hidden');
         };
 
-        // ============== FUNÇÕES DO CLIENTE ==============
+        // Login do Cliente
         window.loginCliente = async () => {
             try {
                 const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
                 const senha = document.getElementById('senhaCliente').value;
-
-                // Validação básica
-                if(cpf.length !== 11) throw new Error('CPF deve ter 11 dígitos!');
-                if(!senha) throw new Error('Digite a senha!');
 
                 const q = query(
                     collection(db, 'clientes'),
@@ -54,7 +50,7 @@
                 );
                
                 const snapshot = await getDocs(q);
-                if(snapshot.empty) throw new Error('Credenciais inválidas!');
+                if (snapshot.empty) throw new Error('Credenciais inválidas!');
 
                 const cliente = snapshot.docs[0].data();
                 document.getElementById('nomeCliente').textContent = cliente.nome;
@@ -69,18 +65,11 @@
             }
         };
 
-        // ============== FUNÇÕES DO ADMIN ==============
-        window.showAdminLogin = () => {
-            showSection('loginAdmin');
-            document.getElementById('loginCliente').style.display = 'none';
-        };
-
+        // Login do Admin
         window.loginAdmin = async () => {
             try {
                 const email = document.getElementById('emailAdmin').value;
                 const senha = document.getElementById('senhaAdmin').value;
-               
-                if(!email || !senha) throw new Error('Preencha todos os campos!');
                
                 await signInWithEmailAndPassword(auth, email, senha);
                 showSection('painelAdmin');
@@ -91,6 +80,12 @@
             }
         };
 
+        // Correção: Redirecionamento do botão "Acessar Admin"
+        document.getElementById('btnAcessarAdmin').addEventListener('click', () => {
+            showSection('loginAdmin');
+        });
+
+        // Cadastro de Clientes
         window.cadastrarCliente = async () => {
             try {
                 const novoCliente = {
@@ -103,10 +98,8 @@
                     valorParcela: calcularParcela(
                         parseFloat(document.getElementById('novoValor').value),
                         parseInt(document.getElementById('novoParcelas').value)
+                    )
                 };
-
-                if(novoCliente.cpf.length !== 11) throw new Error('CPF inválido!');
-                if(novoCliente.parcelas <= 0) throw new Error('Número de parcelas inválido!');
 
                 const cpfExistente = await getDocs(query(
                     collection(db, 'clientes'),
@@ -121,12 +114,6 @@
             } catch (error) {
                 alert(error.message);
             }
-        };
-
-        // ============== FUNÇÕES AUXILIARES ==============
-        const calcularParcela = (valor, parcelas) => {
-            const taxaJuros = 0.0135;
-            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas));
         };
 
         const carregarClientes = async () => {
@@ -148,142 +135,45 @@
             });
         };
 
-        window.excluirCliente = async (id) => {
-            if(confirm('Tem certeza que deseja excluir?')) {
-                await deleteDoc(doc(db, 'clientes', id));
-                await carregarClientes();
-            }
-        };
-
         window.logout = () => {
             signOut(auth);
             showSection('loginCliente');
-            document.getElementById('cpfCliente').value = '';
-            document.getElementById('senhaCliente').value = '';
         };
 
-        // ============== INICIALIZAÇÃO ==============
+        // Verifica estado de login ao carregar
         onAuthStateChanged(auth, (user) => {
-            if(user) showSection('painelAdmin');
-            else showSection('loginCliente');
+            if (user) showSection('painelAdmin');
         });
 
     </script>
 
     <style>
-        :root {
-            --primary: #0073e6;
-            --danger: #dc3545;
-            --background: #f8f9fa;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: var(--background);
-        }
-
-        [data-section] {
-            display: none;
-        }
-
-        .section {
-            background: white;
-            max-width: 1000px;
-            margin: 20px auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        input, select, button {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: opacity 0.3s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .logout-btn {
-            background: var(--danger);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .hidden { display: none; }
+        .section { max-width: 500px; margin: 0 auto; padding: 20px; background: #f4f4f4; border-radius: 5px; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button.logout-btn { background: #dc3545; }
     </style>
 </head>
 <body>
-    <!-- Seção Cliente -->
     <div class="section" id="loginCliente" data-section>
         <h2>Acesso do Cliente</h2>
-        <input type="text" id="cpfCliente" placeholder="CPF (somente números)" maxlength="11">
+        <input type="text" id="cpfCliente" placeholder="CPF (somente números)">
         <input type="password" id="senhaCliente" placeholder="Senha">
         <button onclick="loginCliente()">Entrar</button>
-        <button class="logout-btn" onclick="showAdminLogin()">Acesso Admin</button>
+        <button id="btnAcessarAdmin" class="logout-btn">Acesso Admin</button>
     </div>
 
-    <!-- Painel Cliente -->
-    <div class="section" id="painelCliente" data-section>
-        <h2>Seu Empréstimo</h2>
-        <p><strong>Nome:</strong> <span id="nomeCliente">-</span></p>
-        <p><strong>Valor:</strong> <span id="valorCliente">-</span></p>
-        <p><strong>Parcelas:</strong> <span id="parcelasCliente">-</span></p>
-        <p><strong>Valor Parcela:</strong> <span id="valorParcela">-</span></p>
-        <p><strong>Status:</strong> <span id="statusCliente">-</span></p>
-        <button class="logout-btn" onclick="logout()">Sair</button>
-    </div>
-
-    <!-- Login Admin -->
-    <div class="section" id="loginAdmin" data-section>
+    <div class="section hidden" id="loginAdmin" data-section>
         <h2>Acesso Administrativo</h2>
         <input type="email" id="emailAdmin" placeholder="admin@bcred.com">
         <input type="password" id="senhaAdmin" placeholder="Senha">
         <button onclick="loginAdmin()">Entrar</button>
-        <button class="logout-btn" onclick="showSection('loginCliente')">Voltar</button>
     </div>
 
-    <!-- Painel Admin -->
-    <div class="section" id="painelAdmin" data-section>
+    <div class="section hidden" id="painelAdmin" data-section>
         <h2>Gestão de Clientes</h2>
-        <div style="margin-bottom: 30px;">
-            <h3>Cadastrar Novo Cliente</h3>
-            <input type="text" id="novoCpf" placeholder="CPF (11 dígitos)">
-            <input type="text" id="novoNome" placeholder="Nome completo">
-            <input type="number" id="novoValor" placeholder="Valor do empréstimo (R$)">
-            <input type="number" id="novoParcelas" placeholder="Número de parcelas">
-            <input type="password" id="novaSenha" placeholder="Senha">
-            <select id="novoStatus">
-                <option value="Aprovado">Aprovado</option>
-                <option value="Em Análise">Em Análise</option>
-                <option value="Reprovado">Reprovado</option>
-            </select>
-            <button onclick="cadastrarCliente()">Cadastrar</button>
-        </div>
-
-        <h3>Clientes Cadastrados</h3>
         <table>
             <thead>
                 <tr>
