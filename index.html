@@ -97,6 +97,7 @@
                     valorParcela: calcularParcela(
                         parseFloat(document.getElementById('novoValor').value),
                         parseInt(document.getElementById('novoParcelas').value)
+                    )
                 };
 
                 const cpfExistente = await getDocs(query(
@@ -117,7 +118,7 @@
         // ================= FUNÇÕES AUXILIARES =================
         const calcularParcela = (valor, parcelas) => {
             const taxaJuros = 1.35 / 100;
-            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas)).toFixed(2);
+            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas));
         };
 
         const carregarClientes = async () => {
