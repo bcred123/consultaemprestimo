@@ -15,7 +15,7 @@
             getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // Configuração do Firebase (SUAS INFORMAÇÕES)
+        // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyC2LN5vIi-scq3el_lOXE_k6zk5RVKH-bg",
             authDomain: "bcred-sistema.firebaseapp.com",
@@ -29,23 +29,29 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Controle de telas
+        // Controle de navegação
         const showSection = (sectionId) => {
-            document.querySelectorAll('[data-section]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[data-section]').forEach(el => {
+                el.classList.add('hidden');
+            });
             document.getElementById(sectionId).classList.remove('hidden');
         };
 
-        // Login Cliente
+        // Login do Cliente
         window.loginCliente = async () => {
             try {
                 const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
                 const senha = document.getElementById('senhaCliente').value;
 
-                const q = query(collection(db, 'clientes'), where('cpf', '==', cpf), where('senha', '==', senha));
-                const snapshot = await getDocs(q);
-
-                if (snapshot.empty) throw new Error('CPF ou senha incorretos!');
+                const q = query(
+                    collection(db, 'clientes'),
+                    where('cpf', '==', cpf),
+                    where('senha', '==', senha)
+                );
                
+                const snapshot = await getDocs(q);
+                if (snapshot.empty) throw new Error('Credenciais inválidas!');
+
                 const cliente = snapshot.docs[0].data();
                 document.getElementById('nomeCliente').textContent = cliente.nome;
                 document.getElementById('valorCliente').textContent = `R$ ${cliente.valor.toFixed(2)}`;
@@ -59,14 +65,16 @@
             }
         };
 
-        // Login Admin
+        // Login do Admin
         window.loginAdmin = async () => {
             try {
                 const email = document.getElementById('emailAdmin').value;
                 const senha = document.getElementById('senhaAdmin').value;
+               
                 await signInWithEmailAndPassword(auth, email, senha);
                 showSection('painelAdmin');
                 await carregarClientes();
+
             } catch (error) {
                 alert(`Erro: ${error.code}\n${error.message}`);
             }
@@ -82,22 +90,33 @@
                     parcelas: parseInt(document.getElementById('novoParcelas').value),
                     senha: document.getElementById('novaSenha').value,
                     status: document.getElementById('novoStatus').value,
-                    valorParcela: (parseFloat(document.getElementById('novoValor').value * 0.0135) /
-                                  (1 - Math.pow(1 + 0.0135, -parseInt(document.getElementById('novoParcelas').value))
+                    valorParcela: calcularParcela(
+                        parseFloat(document.getElementById('novoValor').value),
+                        parseInt(document.getElementById('novoParcelas').value)
+                    )
                 };
 
-                const cpfExistente = await getDocs(query(collection(db, 'clientes'), where('cpf', '==', novoCliente.cpf)));
+                const cpfExistente = await getDocs(query(
+                    collection(db, 'clientes'),
+                    where('cpf', '==', novoCliente.cpf)
+                ));
                 if (!cpfExistente.empty) throw new Error('CPF já cadastrado!');
 
                 await addDoc(collection(db, 'clientes'), novoCliente);
                 await carregarClientes();
                 alert('Cliente cadastrado com sucesso!');
+
             } catch (error) {
                 alert(error.message);
             }
         };
 
         // Funções auxiliares
+        const calcularParcela = (valor, parcelas) => {
+            const taxaJuros = 0.0135; // 1.35% ao mês
+            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas));
+        };
+
         const carregarClientes = async () => {
             const tbody = document.getElementById('listaClientes');
             tbody.innerHTML = '';
@@ -118,7 +137,7 @@
         };
 
         window.excluirCliente = async (id) => {
-            if (confirm('Tem certeza que deseja excluir?')) {
+            if (confirm('Confirmar exclusão?')) {
                 await deleteDoc(doc(db, 'clientes', id));
                 await carregarClientes();
             }
@@ -131,10 +150,11 @@
             document.getElementById('senhaCliente').value = '';
         };
 
-        // Inicialização
+        // Verifica estado de login ao carregar
         onAuthStateChanged(auth, (user) => {
             if (user) showSection('painelAdmin');
         });
+
     </script>
 
     <style>
