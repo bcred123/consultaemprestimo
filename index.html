@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bcred - Sistema de Empréstimos</title>
+    <title>Bcred - Sistema Completo</title>
 
     <!-- Firebase SDK v9 -->
     <script type="module">
@@ -12,15 +12,15 @@
             getFirestore, collection, query, where, getDocs, addDoc, doc, deleteDoc
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
         import {
-            getAuth, signInWithEmailAndPassword, signOut
+            getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // ================= CONFIGURAÇÃO FIREBASE =================
+        // Configuração do Firebase (substitua com suas credenciais)
         const firebaseConfig = {
             apiKey: "SUA_API_KEY",
-            authDomain: "SEU_AUTH_DOMAIN",
-            projectId: "SEU_PROJECT_ID",
-            storageBucket: "SEU_STORAGE_BUCKET",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
             messagingSenderId: "SEU_SENDER_ID",
             appId: "SEU_APP_ID"
         };
@@ -29,9 +29,11 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ================= FUNÇÕES GLOBAIS =================
+        // ================= FUNÇÕES DE CONTROLE =================
         const showSection = (sectionId) => {
-            document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[data-section]').forEach(el => {
+                el.classList.add('hidden');
+            });
             document.getElementById(sectionId).classList.remove('hidden');
         };
 
@@ -41,45 +43,44 @@
                 const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
                 const senha = document.getElementById('senhaCliente').value;
 
-                // Consulta ao Firestore
                 const q = query(
                     collection(db, 'clientes'),
                     where('cpf', '==', cpf),
                     where('senha', '==', senha)
                 );
-               
                 const snapshot = await getDocs(q);
-                if (snapshot.empty) throw new Error('CPF ou senha inválidos!');
 
-                // Atualiza UI
+                if (snapshot.empty) throw new Error('Credenciais inválidas!');
+               
                 const cliente = snapshot.docs[0].data();
                 document.getElementById('nomeCliente').textContent = cliente.nome;
                 document.getElementById('valorCliente').textContent = `R$ ${cliente.valor.toFixed(2)}`;
                 document.getElementById('parcelasCliente').textContent = `${cliente.parcelas}x`;
                 document.getElementById('valorParcela').textContent = `R$ ${cliente.valorParcela.toFixed(2)}`;
-                document.getElementById('statusCliente').textContent = cliente.status;
                 showSection('painelCliente');
 
             } catch (error) {
                 alert(error.message);
-                console.error("Erro no login:", error);
             }
         };
 
         // ================= FUNÇÕES DO ADMIN =================
+        window.showAdminLogin = () => {
+            showSection('loginAdmin');
+            document.getElementById('loginCliente').classList.add('hidden');
+        };
+
         window.loginAdmin = async () => {
             try {
                 const email = document.getElementById('emailAdmin').value;
                 const senha = document.getElementById('senhaAdmin').value;
                
-                // Autenticação Firebase
                 await signInWithEmailAndPassword(auth, email, senha);
                 showSection('painelAdmin');
                 await carregarClientes();
 
             } catch (error) {
                 alert(`Erro: ${error.code}\n${error.message}`);
-                console.error("Erro admin:", error);
             }
         };
 
@@ -98,7 +99,6 @@
                     )
                 };
 
-                // Valida CPF único
                 const cpfExistente = await getDocs(query(
                     collection(db, 'clientes'),
                     where('cpf', '==', novoCliente.cpf)
@@ -106,12 +106,11 @@
                 if (!cpfExistente.empty) throw new Error('CPF já cadastrado!');
 
                 await addDoc(collection(db, 'clientes'), novoCliente);
-                alert('Cliente cadastrado!');
                 await carregarClientes();
+                alert('Cliente cadastrado!');
 
             } catch (error) {
                 alert(error.message);
-                console.error("Erro cadastro:", error);
             }
         };
 
@@ -122,28 +121,23 @@
         };
 
         const carregarClientes = async () => {
-            try {
-                const tbody = document.getElementById('listaClientes');
-                tbody.innerHTML = '';
-                const snapshot = await getDocs(collection(db, 'clientes'));
-               
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${data.cpf}</td>
-                            <td>${data.nome}</td>
-                            <td>R$ ${data.valor.toFixed(2)}</td>
-                            <td>${data.parcelas}x</td>
-                            <td>${data.status}</td>
-                            <td><button onclick="excluirCliente('${doc.id}')">Excluir</button></td>
-                        </tr>
-                    `;
-                });
-
-            } catch (error) {
-                console.error("Erro carregamento:", error);
-            }
+            const tbody = document.getElementById('listaClientes');
+            tbody.innerHTML = '';
+            const snapshot = await getDocs(collection(db, 'clientes'));
+           
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${data.cpf}</td>
+                        <td>${data.nome}</td>
+                        <td>R$ ${data.valor.toFixed(2)}</td>
+                        <td>${data.parcelas}x</td>
+                        <td>${data.status}</td>
+                        <td><button onclick="excluirCliente('${doc.id}')">Excluir</button></td>
+                    </tr>
+                `;
+            });
         };
 
         window.excluirCliente = async (id) => {
@@ -159,6 +153,11 @@
             document.getElementById('cpfCliente').value = '';
             document.getElementById('senhaCliente').value = '';
         };
+
+        // Inicialização
+        onAuthStateChanged(auth, (user) => {
+            if (user) showSection('painelAdmin');
+        });
     </script>
 
     <style>
@@ -228,26 +227,25 @@
 </head>
 <body>
     <!-- Seção Cliente -->
-    <div class="section" id="loginCliente">
+    <div class="section" id="loginCliente" data-section>
         <h2>Acesso do Cliente</h2>
         <input type="text" id="cpfCliente" placeholder="CPF (somente números)" maxlength="11">
         <input type="password" id="senhaCliente" placeholder="Senha">
         <button onclick="loginCliente()">Entrar</button>
-        <button class="logout-btn" onclick="showSection('loginAdmin')">Acesso Admin</button>
+        <button class="logout-btn" onclick="showAdminLogin()">Acesso Admin</button>
     </div>
 
-    <div class="section hidden" id="painelCliente">
+    <div class="section hidden" id="painelCliente" data-section>
         <h2>Seu Empréstimo</h2>
         <p><strong>Nome:</strong> <span id="nomeCliente">-</span></p>
         <p><strong>Valor:</strong> <span id="valorCliente">-</span></p>
         <p><strong>Parcelas:</strong> <span id="parcelasCliente">-</span></p>
         <p><strong>Valor Parcela:</strong> <span id="valorParcela">-</span></p>
-        <p><strong>Status:</strong> <span id="statusCliente">-</span></p>
         <button class="logout-btn" onclick="logout()">Sair</button>
     </div>
 
     <!-- Seção Admin -->
-    <div class="section hidden" id="loginAdmin">
+    <div class="section hidden" id="loginAdmin" data-section>
         <h2>Acesso Administrativo</h2>
         <input type="email" id="emailAdmin" placeholder="admin@bcred.com">
         <input type="password" id="senhaAdmin" placeholder="Senha">
@@ -255,7 +253,7 @@
         <button class="logout-btn" onclick="showSection('loginCliente')">Voltar</button>
     </div>
 
-    <div class="section hidden" id="painelAdmin">
+    <div class="section hidden" id="painelAdmin" data-section>
         <h2>Gestão de Clientes</h2>
        
         <div style="margin-bottom: 30px;">
