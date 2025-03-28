@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bcred - Sistema Completo</title>
+    <title>BCred - Sistema Completo</title>
 
     <!-- Firebase SDK v9 -->
     <script type="module">
+        // ================= CONFIGURAÇÃO DO FIREBASE =================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import {
             getFirestore, collection, query, where, getDocs, addDoc, doc, deleteDoc
@@ -15,14 +16,14 @@
             getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // Configuração do Firebase (substitua com suas credenciais)
+        // SUAS CONFIGURAÇÕES (já atualizadas com seu projeto)
         const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            authDomain: "SEU_PROJETO.firebaseapp.com",
-            projectId: "SEU_PROJETO",
-            storageBucket: "SEU_PROJETO.appspot.com",
-            messagingSenderId: "SEU_SENDER_ID",
-            appId: "SEU_APP_ID"
+            apiKey: "AIzaSyC2LN5vIi-scq3el_lOXE_k6zk5RVKH-bg",
+            authDomain: "bcred-sistema.firebaseapp.com",
+            projectId: "bcred-sistema",
+            storageBucket: "bcred-sistema.firebasestorage.app",
+            messagingSenderId: "828381179656",
+            appId: "1:828381179656:web:31f8cc137ea2999f9306bd"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -96,7 +97,6 @@
                     valorParcela: calcularParcela(
                         parseFloat(document.getElementById('novoValor').value),
                         parseInt(document.getElementById('novoParcelas').value)
-                    )
                 };
 
                 const cpfExistente = await getDocs(query(
