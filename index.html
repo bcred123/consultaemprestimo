@@ -9,18 +9,18 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import {
-            getFirestore, collection, addDoc, getDocs, doc, deleteDoc, query, where
+            getFirestore, collection, query, where, getDocs, addDoc, doc, deleteDoc
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
         import {
-            getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+            getAuth, signInWithEmailAndPassword, signOut
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // Configuração do Firebase (substitua com suas credenciais)
+        // ================= CONFIGURAÇÃO FIREBASE =================
         const firebaseConfig = {
             apiKey: "SUA_API_KEY",
-            authDomain: "SEU_PROJETO.firebaseapp.com",
-            projectId: "SEU_PROJETO",
-            storageBucket: "SEU_PROJETO.appspot.com",
+            authDomain: "SEU_AUTH_DOMAIN",
+            projectId: "SEU_PROJECT_ID",
+            storageBucket: "SEU_STORAGE_BUCKET",
             messagingSenderId: "SEU_SENDER_ID",
             appId: "SEU_APP_ID"
         };
@@ -30,15 +30,18 @@
         const auth = getAuth(app);
 
         // ================= FUNÇÕES GLOBAIS =================
-        window.auth = auth;
-        window.db = db;
+        const showSection = (sectionId) => {
+            document.querySelectorAll('.section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+        };
 
         // ================= FUNÇÕES DO CLIENTE =================
         window.loginCliente = async () => {
-            const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
-            const senha = document.getElementById('senhaCliente').value;
-
             try {
+                const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
+                const senha = document.getElementById('senhaCliente').value;
+
+                // Consulta ao Firestore
                 const q = query(
                     collection(db, 'clientes'),
                     where('cpf', '==', cpf),
@@ -46,103 +49,115 @@
                 );
                
                 const snapshot = await getDocs(q);
-                if (snapshot.empty) return alert('CPF ou senha inválidos!');
+                if (snapshot.empty) throw new Error('CPF ou senha inválidos!');
 
+                // Atualiza UI
                 const cliente = snapshot.docs[0].data();
-                document.getElementById('loginCliente').classList.add('hidden');
-                document.getElementById('painelCliente').classList.remove('hidden');
                 document.getElementById('nomeCliente').textContent = cliente.nome;
                 document.getElementById('valorCliente').textContent = `R$ ${cliente.valor.toFixed(2)}`;
                 document.getElementById('parcelasCliente').textContent = `${cliente.parcelas}x`;
                 document.getElementById('valorParcela').textContent = `R$ ${cliente.valorParcela.toFixed(2)}`;
                 document.getElementById('statusCliente').textContent = cliente.status;
+                showSection('painelCliente');
 
             } catch (error) {
-                alert(`Erro: ${error.message}`);
+                alert(error.message);
+                console.error("Erro no login:", error);
             }
         };
 
         // ================= FUNÇÕES DO ADMIN =================
         window.loginAdmin = async () => {
-            const email = document.getElementById('emailAdmin').value;
-            const senha = document.getElementById('senhaAdmin').value;
-
             try {
+                const email = document.getElementById('emailAdmin').value;
+                const senha = document.getElementById('senhaAdmin').value;
+               
+                // Autenticação Firebase
                 await signInWithEmailAndPassword(auth, email, senha);
-                document.getElementById('loginAdmin').classList.add('hidden');
-                document.getElementById('painelAdmin').classList.remove('hidden');
+                showSection('painelAdmin');
                 await carregarClientes();
+
             } catch (error) {
-                alert(`Erro: ${error.message}`);
+                alert(`Erro: ${error.code}\n${error.message}`);
+                console.error("Erro admin:", error);
             }
         };
 
         window.cadastrarCliente = async () => {
-            const novoCliente = {
-                cpf: document.getElementById('novoCpf').value.replace(/\D/g, ''),
-                nome: document.getElementById('novoNome').value.trim(),
-                valor: parseFloat(document.getElementById('novoValor').value),
-                parcelas: parseInt(document.getElementById('novoParcelas').value),
-                senha: document.getElementById('novaSenha').value,
-                status: document.getElementById('novoStatus').value,
-                valorParcela: calcularParcela(
-                    parseFloat(document.getElementById('novoValor').value),
-                    parseInt(document.getElementById('novoParcelas').value)
-                )
-            };
-
             try {
+                const novoCliente = {
+                    cpf: document.getElementById('novoCpf').value.replace(/\D/g, ''),
+                    nome: document.getElementById('novoNome').value.trim(),
+                    valor: parseFloat(document.getElementById('novoValor').value),
+                    parcelas: parseInt(document.getElementById('novoParcelas').value),
+                    senha: document.getElementById('novaSenha').value,
+                    status: document.getElementById('novoStatus').value,
+                    valorParcela: calcularParcela(
+                        parseFloat(document.getElementById('novoValor').value),
+                        parseInt(document.getElementById('novoParcelas').value)
+                    )
+                };
+
+                // Valida CPF único
                 const cpfExistente = await getDocs(query(
                     collection(db, 'clientes'),
                     where('cpf', '==', novoCliente.cpf)
                 ));
-                if (!cpfExistente.empty) return alert('CPF já cadastrado!');
+                if (!cpfExistente.empty) throw new Error('CPF já cadastrado!');
 
                 await addDoc(collection(db, 'clientes'), novoCliente);
-                alert('Cliente cadastrado com sucesso!');
-                carregarClientes();
+                alert('Cliente cadastrado!');
+                await carregarClientes();
+
             } catch (error) {
-                alert(`Erro: ${error.message}`);
+                alert(error.message);
+                console.error("Erro cadastro:", error);
             }
         };
 
-        async function carregarClientes() {
-            const tbody = document.getElementById('listaClientes');
-            tbody.innerHTML = '';
-            const snapshot = await getDocs(collection(db, 'clientes'));
-            snapshot.forEach((doc) => {
-                const cliente = doc.data();
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${cliente.cpf}</td>
-                        <td>${cliente.nome}</td>
-                        <td>R$ ${cliente.valor.toFixed(2)}</td>
-                        <td>${cliente.parcelas}x</td>
-                        <td>${cliente.status}</td>
-                        <td><button onclick="excluirCliente('${doc.id}')">Excluir</button></td>
-                    </tr>
-                `;
-            });
-        }
+        // ================= FUNÇÕES AUXILIARES =================
+        const calcularParcela = (valor, parcelas) => {
+            const taxaJuros = 1.35 / 100;
+            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas)).toFixed(2);
+        };
+
+        const carregarClientes = async () => {
+            try {
+                const tbody = document.getElementById('listaClientes');
+                tbody.innerHTML = '';
+                const snapshot = await getDocs(collection(db, 'clientes'));
+               
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${data.cpf}</td>
+                            <td>${data.nome}</td>
+                            <td>R$ ${data.valor.toFixed(2)}</td>
+                            <td>${data.parcelas}x</td>
+                            <td>${data.status}</td>
+                            <td><button onclick="excluirCliente('${doc.id}')">Excluir</button></td>
+                        </tr>
+                    `;
+                });
+
+            } catch (error) {
+                console.error("Erro carregamento:", error);
+            }
+        };
 
         window.excluirCliente = async (id) => {
             if (confirm('Confirmar exclusão?')) {
                 await deleteDoc(doc(db, 'clientes', id));
-                carregarClientes();
+                await carregarClientes();
             }
         };
 
-        // ================= FUNÇÕES GERAIS =================
-        function calcularParcela(valor, parcelas) {
-            const taxaJuros = 1.35 / 100;
-            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas)).toFixed(2);
-        }
-
         window.logout = () => {
             signOut(auth);
-            document.querySelectorAll('.hidden').forEach(el => el.classList.remove('hidden'));
-            document.getElementById('painelCliente').classList.add('hidden'));
-            document.getElementById('painelAdmin').classList.add('hidden'));
+            showSection('loginCliente');
+            document.getElementById('cpfCliente').value = '';
+            document.getElementById('senhaCliente').value = '';
         };
     </script>
 
@@ -156,6 +171,7 @@
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
+            padding: 20px;
             background: var(--background);
         }
 
@@ -163,7 +179,7 @@
             display: none;
         }
 
-        .card {
+        .section {
             background: white;
             max-width: 1000px;
             margin: 20px auto;
@@ -211,37 +227,35 @@
     </style>
 </head>
 <body>
-    <!-- Seção de Login do Cliente -->
-    <div class="card" id="loginCliente">
+    <!-- Seção Cliente -->
+    <div class="section" id="loginCliente">
         <h2>Acesso do Cliente</h2>
         <input type="text" id="cpfCliente" placeholder="CPF (somente números)" maxlength="11">
         <input type="password" id="senhaCliente" placeholder="Senha">
         <button onclick="loginCliente()">Entrar</button>
-        <button class="logout-btn" onclick="document.getElementById('loginAdmin').classList.remove('hidden'); this.parentElement.classList.add('hidden')">Acesso Admin</button>
+        <button class="logout-btn" onclick="showSection('loginAdmin')">Acesso Admin</button>
     </div>
 
-    <!-- Painel do Cliente -->
-    <div class="card hidden" id="painelCliente">
+    <div class="section hidden" id="painelCliente">
         <h2>Seu Empréstimo</h2>
         <p><strong>Nome:</strong> <span id="nomeCliente">-</span></p>
         <p><strong>Valor:</strong> <span id="valorCliente">-</span></p>
         <p><strong>Parcelas:</strong> <span id="parcelasCliente">-</span></p>
-        <p><strong>Valor da Parcela:</strong> <span id="valorParcela">-</span></p>
+        <p><strong>Valor Parcela:</strong> <span id="valorParcela">-</span></p>
         <p><strong>Status:</strong> <span id="statusCliente">-</span></p>
         <button class="logout-btn" onclick="logout()">Sair</button>
     </div>
 
-    <!-- Seção de Login do Admin -->
-    <div class="card hidden" id="loginAdmin">
+    <!-- Seção Admin -->
+    <div class="section hidden" id="loginAdmin">
         <h2>Acesso Administrativo</h2>
         <input type="email" id="emailAdmin" placeholder="admin@bcred.com">
         <input type="password" id="senhaAdmin" placeholder="Senha">
         <button onclick="loginAdmin()">Entrar</button>
-        <button class="logout-btn" onclick="document.getElementById('loginCliente').classList.remove('hidden'); this.parentElement.classList.add('hidden')">Voltar</button>
+        <button class="logout-btn" onclick="showSection('loginCliente')">Voltar</button>
     </div>
 
-    <!-- Painel do Admin -->
-    <div class="card hidden" id="painelAdmin">
+    <div class="section hidden" id="painelAdmin">
         <h2>Gestão de Clientes</h2>
        
         <div style="margin-bottom: 30px;">
