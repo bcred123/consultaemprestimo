@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BCred - Sistema Completo</title>
 
-    <!-- Firebase SDK v9 -->
+    <!-- Firebase SDK -->
     <script type="module">
-        // ================= CONFIGURAÇÃO DO FIREBASE =================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
         import {
             getFirestore, collection, query, where, getDocs, addDoc, doc, deleteDoc
@@ -16,7 +15,7 @@
             getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // SUAS CONFIGURAÇÕES (já atualizadas com seu projeto)
+        // Configuração do Firebase (SUAS INFORMAÇÕES)
         const firebaseConfig = {
             apiKey: "AIzaSyC2LN5vIi-scq3el_lOXE_k6zk5RVKH-bg",
             authDomain: "bcred-sistema.firebaseapp.com",
@@ -30,34 +29,29 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ================= FUNÇÕES DE CONTROLE =================
+        // Controle de telas
         const showSection = (sectionId) => {
-            document.querySelectorAll('[data-section]').forEach(el => {
-                el.classList.add('hidden');
-            });
+            document.querySelectorAll('[data-section]').forEach(el => el.classList.add('hidden'));
             document.getElementById(sectionId).classList.remove('hidden');
         };
 
-        // ================= FUNÇÕES DO CLIENTE =================
+        // Login Cliente
         window.loginCliente = async () => {
             try {
                 const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
                 const senha = document.getElementById('senhaCliente').value;
 
-                const q = query(
-                    collection(db, 'clientes'),
-                    where('cpf', '==', cpf),
-                    where('senha', '==', senha)
-                );
+                const q = query(collection(db, 'clientes'), where('cpf', '==', cpf), where('senha', '==', senha));
                 const snapshot = await getDocs(q);
 
-                if (snapshot.empty) throw new Error('Credenciais inválidas!');
+                if (snapshot.empty) throw new Error('CPF ou senha incorretos!');
                
                 const cliente = snapshot.docs[0].data();
                 document.getElementById('nomeCliente').textContent = cliente.nome;
                 document.getElementById('valorCliente').textContent = `R$ ${cliente.valor.toFixed(2)}`;
                 document.getElementById('parcelasCliente').textContent = `${cliente.parcelas}x`;
                 document.getElementById('valorParcela').textContent = `R$ ${cliente.valorParcela.toFixed(2)}`;
+                document.getElementById('statusCliente').textContent = cliente.status;
                 showSection('painelCliente');
 
             } catch (error) {
@@ -65,26 +59,20 @@
             }
         };
 
-        // ================= FUNÇÕES DO ADMIN =================
-        window.showAdminLogin = () => {
-            showSection('loginAdmin');
-            document.getElementById('loginCliente').classList.add('hidden');
-        };
-
+        // Login Admin
         window.loginAdmin = async () => {
             try {
                 const email = document.getElementById('emailAdmin').value;
                 const senha = document.getElementById('senhaAdmin').value;
-               
                 await signInWithEmailAndPassword(auth, email, senha);
                 showSection('painelAdmin');
                 await carregarClientes();
-
             } catch (error) {
                 alert(`Erro: ${error.code}\n${error.message}`);
             }
         };
 
+        // Cadastro de Clientes
         window.cadastrarCliente = async () => {
             try {
                 const novoCliente = {
@@ -94,33 +82,22 @@
                     parcelas: parseInt(document.getElementById('novoParcelas').value),
                     senha: document.getElementById('novaSenha').value,
                     status: document.getElementById('novoStatus').value,
-                    valorParcela: calcularParcela(
-                        parseFloat(document.getElementById('novoValor').value),
-                        parseInt(document.getElementById('novoParcelas').value)
-                    )
+                    valorParcela: (parseFloat(document.getElementById('novoValor').value * 0.0135) /
+                                  (1 - Math.pow(1 + 0.0135, -parseInt(document.getElementById('novoParcelas').value))
                 };
 
-                const cpfExistente = await getDocs(query(
-                    collection(db, 'clientes'),
-                    where('cpf', '==', novoCliente.cpf)
-                ));
+                const cpfExistente = await getDocs(query(collection(db, 'clientes'), where('cpf', '==', novoCliente.cpf)));
                 if (!cpfExistente.empty) throw new Error('CPF já cadastrado!');
 
                 await addDoc(collection(db, 'clientes'), novoCliente);
                 await carregarClientes();
-                alert('Cliente cadastrado!');
-
+                alert('Cliente cadastrado com sucesso!');
             } catch (error) {
                 alert(error.message);
             }
         };
 
-        // ================= FUNÇÕES AUXILIARES =================
-        const calcularParcela = (valor, parcelas) => {
-            const taxaJuros = 1.35 / 100;
-            return (valor * taxaJuros) / (1 - Math.pow(1 + taxaJuros, -parcelas));
-        };
-
+        // Funções auxiliares
         const carregarClientes = async () => {
             const tbody = document.getElementById('listaClientes');
             tbody.innerHTML = '';
@@ -136,13 +113,12 @@
                         <td>${data.parcelas}x</td>
                         <td>${data.status}</td>
                         <td><button onclick="excluirCliente('${doc.id}')">Excluir</button></td>
-                    </tr>
-                `;
+                    </tr>`;
             });
         };
 
         window.excluirCliente = async (id) => {
-            if (confirm('Confirmar exclusão?')) {
+            if (confirm('Tem certeza que deseja excluir?')) {
                 await deleteDoc(doc(db, 'clientes', id));
                 await carregarClientes();
             }
@@ -175,9 +151,7 @@
             background: var(--background);
         }
 
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none; }
 
         .section {
             background: white;
@@ -205,13 +179,8 @@
             transition: opacity 0.3s;
         }
 
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .logout-btn {
-            background: var(--danger);
-        }
+        button:hover { opacity: 0.9; }
+        .logout-btn { background: var(--danger); }
 
         table {
             width: 100%;
@@ -233,7 +202,7 @@
         <input type="text" id="cpfCliente" placeholder="CPF (somente números)" maxlength="11">
         <input type="password" id="senhaCliente" placeholder="Senha">
         <button onclick="loginCliente()">Entrar</button>
-        <button class="logout-btn" onclick="showAdminLogin()">Acesso Admin</button>
+        <button class="logout-btn" onclick="showSection('loginAdmin')">Acesso Admin</button>
     </div>
 
     <div class="section hidden" id="painelCliente" data-section>
@@ -242,6 +211,7 @@
         <p><strong>Valor:</strong> <span id="valorCliente">-</span></p>
         <p><strong>Parcelas:</strong> <span id="parcelasCliente">-</span></p>
         <p><strong>Valor Parcela:</strong> <span id="valorParcela">-</span></p>
+        <p><strong>Status:</strong> <span id="statusCliente">-</span></p>
         <button class="logout-btn" onclick="logout()">Sair</button>
     </div>
 
@@ -256,7 +226,6 @@
 
     <div class="section hidden" id="painelAdmin" data-section>
         <h2>Gestão de Clientes</h2>
-       
         <div style="margin-bottom: 30px;">
             <h3>Cadastrar Novo Cliente</h3>
             <input type="text" id="novoCpf" placeholder="CPF (11 dígitos)">
