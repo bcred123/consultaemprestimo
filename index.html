@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BCred - Sistema de Empréstimos</title>
+    <title>BCred - Sistema Financeiro</title>
 
     <!-- Firebase SDK -->
     <script type="module">
@@ -15,7 +15,7 @@
             getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
 
-        // Configuração do Firebase
+        // Configuração do Firebase (substitua com seus dados se necessário)
         const firebaseConfig = {
             apiKey: "AIzaSyC2LN5vIi-scq3el_lOXE_k6zk5RVKH-bg",
             authDomain: "bcred-sistema.firebaseapp.com",
@@ -25,11 +25,18 @@
             appId: "1:828381179656:web:31f8cc137ea2999f9306bd"
         };
 
+        // Inicialização do Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ================= FUNÇÕES GLOBAIS =================
+        // Formatador de moeda brasileira
+        const formatador = new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+
+        // ================= CONTROLE DE TELAS =================
         window.showSection = (sectionId) => {
             document.querySelectorAll('[data-section]').forEach(el => {
                 el.style.display = 'none';
@@ -37,28 +44,32 @@
             document.getElementById(sectionId).style.display = 'block';
         };
 
-        // ================= FUNCIONALIDADES CLIENTE =================
+        // ================= FUNÇÕES DO CLIENTE =================
         window.loginCliente = async () => {
             try {
                 const cpf = document.getElementById('cpfCliente').value.replace(/\D/g, '');
                 const senha = document.getElementById('senhaCliente').value;
 
-                if(cpf.length !== 11) throw new Error('CPF deve ter 11 dígitos!');
-                if(!senha) throw new Error('Senha obrigatória!');
+                // Validações
+                if(cpf.length !== 11) throw new Error('CPF deve conter 11 dígitos!');
+                if(!senha) throw new Error('Digite a senha!');
 
-                const querySnapshot = await getDocs(query(
+                // Consulta ao Firestore
+                const q = query(
                     collection(db, 'clientes'),
                     where('cpf', '==', cpf),
                     where('senha', '==', senha)
-                ));
+                );
+               
+                const snapshot = await getDocs(q);
+                if(snapshot.empty) throw new Error('Credenciais inválidas!');
 
-                if(querySnapshot.empty) throw new Error('Credenciais inválidas!');
-
-                const cliente = querySnapshot.docs[0].data();
+                // Preenchimento dos dados
+                const cliente = snapshot.docs[0].data();
                 document.getElementById('nomeCliente').textContent = cliente.nome;
-                document.getElementById('valorCliente').textContent = `R$ ${cliente.valor.toFixed(2)}`;
+                document.getElementById('valorCliente').textContent = formatador.format(cliente.valor);
                 document.getElementById('parcelasCliente').textContent = `${cliente.parcelas}x`;
-                document.getElementById('valorParcela').textContent = `R$ ${cliente.valorParcela.toFixed(2)}`;
+                document.getElementById('valorParcela').textContent = formatador.format(cliente.valorParcela);
                 document.getElementById('statusCliente').textContent = cliente.status;
                 showSection('painelCliente');
 
@@ -67,7 +78,7 @@
             }
         };
 
-        // ================= FUNCIONALIDADES ADMIN =================
+        // ================= FUNÇÕES DO ADMIN =================
         window.showAdminLogin = () => {
             showSection('loginAdmin');
             document.getElementById('loginCliente').style.display = 'none';
@@ -104,16 +115,18 @@
                     )
                 };
 
+                // Validações
                 if(novoCliente.cpf.length !== 11) throw new Error('CPF inválido!');
-                if(novoCliente.parcelas <= 0) throw new Error('Parcelas inválidas!');
+                if(novoCliente.parcelas <= 0) throw new Error('Número de parcelas inválido!');
 
+                // Verifica CPF existente
                 const cpfExistente = await getDocs(query(
                     collection(db, 'clientes'),
                     where('cpf', '==', novoCliente.cpf)
                 ));
+                if (!cpfExistente.empty) throw new Error('CPF já cadastrado!');
 
-                if(!cpfExistente.empty) throw new Error('CPF já cadastrado!');
-
+                // Salva no Firestore
                 await addDoc(collection(db, 'clientes'), novoCliente);
                 await carregarClientes();
                 alert('Cliente cadastrado com sucesso!');
@@ -140,7 +153,7 @@
                     <tr>
                         <td>${data.cpf}</td>
                         <td>${data.nome}</td>
-                        <td>R$ ${data.valor.toFixed(2)}</td>
+                        <td>${formatador.format(data.valor)}</td>
                         <td>${data.parcelas}x</td>
                         <td>${data.status}</td>
                         <td><button onclick="excluirCliente('${doc.id}')">🗑️ Excluir</button></td>
@@ -251,7 +264,7 @@
     </style>
 </head>
 <body>
-    <!-- Tela Inicial - Cliente -->
+    <!-- Tela de Login do Cliente -->
     <div class="section" id="loginCliente" data-section>
         <h2>Acesso do Cliente</h2>
         <input type="text" id="cpfCliente" placeholder="Digite seu CPF (apenas números)" maxlength="11">
@@ -273,9 +286,9 @@
         <button class="logout-btn" onclick="logout()">🚪 Sair</button>
     </div>
 
-    <!-- Login Administrativo -->
+    <!-- Tela de Login do Admin -->
     <div class="section" id="loginAdmin" data-section>
-        <h2>Área Restrita</h2>
+        <h2>Área Administrativa</h2>
         <input type="email" id="emailAdmin" placeholder="admin@bcred.com">
         <input type="password" id="senhaAdmin" placeholder="Senha administrativa">
         <button onclick="loginAdmin()">🔓 Entrar</button>
@@ -286,6 +299,7 @@
     <div class="section" id="painelAdmin" data-section>
         <h2>Gestão de Clientes</h2>
        
+        <!-- Formulário de Cadastro -->
         <div class="novo-cliente">
             <h3>➕ Novo Cliente</h3>
             <input type="text" id="novoCpf" placeholder="CPF (11 dígitos)">
@@ -301,6 +315,7 @@
             <button onclick="cadastrarCliente()">💾 Salvar Cliente</button>
         </div>
 
+        <!-- Lista de Clientes -->
         <div class="lista-clientes">
             <h3>📋 Clientes Cadastrados</h3>
             <table>
